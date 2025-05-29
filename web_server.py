@@ -1,5 +1,6 @@
 from flask import Flask, request, jsonify, render_template_string
 from flask_cors import CORS
+import json
 import logging
 import time
 from bot import CustomerSupportBot
@@ -26,13 +27,13 @@ except Exception as e:
 
 @app.route('/')
 def index():
-    """Serve the ShopEasy HTML page with integrated chatbot"""
+    """Serve the integrated one-page website with AI chat"""
     html_content = '''<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ShopEasy - Your Online Store</title>
+    <title>Mshauri Tech - AI-Powered Solutions</title>
     <style>
         * {
             margin: 0;
@@ -44,6 +45,7 @@ def index():
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             line-height: 1.6;
             color: #333;
+            overflow-x: hidden;
         }
 
         .container {
@@ -54,12 +56,14 @@ def index():
 
         /* Header */
         header {
-            background: #2c3e50;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             color: white;
             padding: 1rem 0;
-            position: sticky;
+            position: fixed;
+            width: 100%;
             top: 0;
-            z-index: 100;
+            z-index: 1000;
+            backdrop-filter: blur(10px);
         }
 
         .header-content {
@@ -71,26 +75,26 @@ def index():
         .logo {
             font-size: 1.8rem;
             font-weight: bold;
+            background: linear-gradient(45deg, #fff, #f0f0f0);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
         }
 
-        .cart-info {
+        .nav-menu {
             display: flex;
-            align-items: center;
-            gap: 15px;
+            list-style: none;
+            gap: 2rem;
         }
 
-        .cart-btn {
-            background: #e74c3c;
+        .nav-menu a {
             color: white;
-            border: none;
-            padding: 8px 16px;
-            border-radius: 4px;
-            cursor: pointer;
-            font-size: 0.9rem;
+            text-decoration: none;
+            font-weight: 500;
+            transition: color 0.3s ease;
         }
 
-        .cart-btn:hover {
-            background: #c0392b;
+        .nav-menu a:hover {
+            color: #f1c40f;
         }
 
         /* Hero Section */
@@ -98,22 +102,68 @@ def index():
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             color: white;
             text-align: center;
-            padding: 4rem 0;
+            padding: 8rem 0 4rem;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .hero::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><circle cx="25" cy="25" r="2" fill="rgba(255,255,255,0.1)"/><circle cx="75" cy="75" r="1.5" fill="rgba(255,255,255,0.1)"/><circle cx="50" cy="10" r="1" fill="rgba(255,255,255,0.1)"/></svg>');
+            animation: float 20s infinite linear;
+        }
+
+        @keyframes float {
+            0% { transform: translateY(0px) rotate(0deg); }
+            100% { transform: translateY(-100px) rotate(360deg); }
+        }
+
+        .hero-content {
+            position: relative;
+            z-index: 2;
         }
 
         .hero h1 {
-            font-size: 3rem;
+            font-size: 3.5rem;
             margin-bottom: 1rem;
+            animation: fadeInUp 1s ease-out;
         }
 
         .hero p {
-            font-size: 1.2rem;
+            font-size: 1.3rem;
             margin-bottom: 2rem;
+            opacity: 0.9;
+            animation: fadeInUp 1s ease-out 0.2s both;
         }
 
-        /* Products Section */
-        .products {
-            padding: 4rem 0;
+        .cta-button {
+            display: inline-block;
+            background: #f1c40f;
+            color: #333;
+            padding: 15px 30px;
+            text-decoration: none;
+            border-radius: 50px;
+            font-weight: bold;
+            font-size: 1.1rem;
+            transition: all 0.3s ease;
+            animation: fadeInUp 1s ease-out 0.4s both;
+        }
+
+        .cta-button:hover {
+            background: #e67e22;
+            color: white;
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(0,0,0,0.2);
+        }
+
+        /* Services Section */
+        .services {
+            padding: 5rem 0;
             background: #f8f9fa;
         }
 
@@ -124,107 +174,144 @@ def index():
             color: #2c3e50;
         }
 
-        .product-grid {
+        .services-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
             gap: 2rem;
         }
 
-        .product-card {
+        .service-card {
             background: white;
-            border-radius: 8px;
+            padding: 2rem;
+            border-radius: 15px;
+            text-align: center;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            transition: all 0.3s ease;
+            position: relative;
             overflow: hidden;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-            transition: transform 0.3s ease;
         }
 
-        .product-card:hover {
-            transform: translateY(-5px);
-        }
-
-        .product-image {
+        .service-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
             width: 100%;
-            height: 200px;
-            background: #ddd;
-            display: flex;
-            align-items: center;
-            justify-content: center;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+            transition: left 0.5s;
+        }
+
+        .service-card:hover::before {
+            left: 100%;
+        }
+
+        .service-card:hover {
+            transform: translateY(-10px);
+            box-shadow: 0 20px 40px rgba(0,0,0,0.15);
+        }
+
+        .service-icon {
             font-size: 3rem;
-            color: #666;
+            margin-bottom: 1rem;
+            display: block;
         }
 
-        .product-info {
-            padding: 1.5rem;
-        }
-
-        .product-title {
-            font-size: 1.3rem;
-            font-weight: bold;
-            margin-bottom: 0.5rem;
+        .service-card h3 {
+            font-size: 1.5rem;
+            margin-bottom: 1rem;
             color: #2c3e50;
         }
 
-        .product-description {
-            color: #666;
-            margin-bottom: 1rem;
+        /* About Section */
+        .about {
+            padding: 5rem 0;
+            background: white;
         }
 
-        .product-price {
-            font-size: 1.5rem;
-            font-weight: bold;
-            color: #e74c3c;
-            margin-bottom: 1rem;
+        .about-content {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 3rem;
+            align-items: center;
         }
 
-        .add-to-cart {
-            width: 100%;
-            background: #27ae60;
+        .about-text h2 {
+            font-size: 2.5rem;
+            margin-bottom: 2rem;
+            color: #2c3e50;
+        }
+
+        .about-text p {
+            font-size: 1.1rem;
+            margin-bottom: 1.5rem;
+            color: #555;
+        }
+
+        .about-image {
+            text-align: center;
+            font-size: 10rem;
+            color: #667eea;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+        }
+
+        /* Contact Section */
+        .contact {
+            padding: 5rem 0;
+            background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
             color: white;
-            border: none;
-            padding: 12px;
-            border-radius: 4px;
-            cursor: pointer;
-            font-size: 1rem;
-            transition: background 0.3s ease;
         }
 
-        .add-to-cart:hover {
-            background: #219a52;
+        .contact-content {
+            text-align: center;
+        }
+
+        .contact h2 {
+            font-size: 2.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .contact-info {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 2rem;
+            margin-top: 3rem;
+        }
+
+        .contact-item {
+            background: rgba(255,255,255,0.1);
+            padding: 2rem;
+            border-radius: 10px;
+            backdrop-filter: blur(10px);
+        }
+
+        .contact-item h3 {
+            margin-bottom: 1rem;
+            color: #f1c40f;
         }
 
         /* Footer */
         footer {
-            background: #2c3e50;
+            background: #1a252f;
             color: white;
             text-align: center;
             padding: 2rem 0;
         }
 
-        .footer-content {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-            gap: 2rem;
-            margin-bottom: 2rem;
-        }
-
-        .footer-section h3 {
-            margin-bottom: 1rem;
-        }
-
-        .footer-bottom {
-            border-top: 1px solid #34495e;
-            padding-top: 1rem;
-        }
-
-        /* Chatbot Styles */
-        .chatbot-widget {
+        /* Chat Widget Styles */
+        .chat-widget {
             position: fixed;
             bottom: 20px;
             right: 20px;
-            z-index: 1000;
+            z-index: 1001;
         }
 
-        .chatbot-button {
+        .chat-button {
             width: 60px;
             height: 60px;
             border-radius: 50%;
@@ -233,101 +320,137 @@ def index():
             color: white;
             font-size: 24px;
             cursor: pointer;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
-            transition: transform 0.3s ease;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+            transition: all 0.3s ease;
+            position: relative;
         }
 
-        .chatbot-button:hover {
+        .chat-button:hover {
             transform: scale(1.1);
+            box-shadow: 0 6px 25px rgba(0,0,0,0.4);
         }
 
-        .chatbot-window {
+        .chat-button.active {
+            transform: rotate(45deg);
+        }
+
+        .chat-window {
             display: none;
             position: fixed;
             bottom: 90px;
             right: 20px;
-            width: 350px;
-            height: 500px;
+            width: 400px;
+            height: 600px;
             background: white;
-            border-radius: 12px;
-            box-shadow: 0 8px 32px rgba(0,0,0,0.2);
+            border-radius: 15px;
+            box-shadow: 0 10px 50px rgba(0,0,0,0.3);
             overflow: hidden;
-            z-index: 1000;
+            animation: slideUp 0.3s ease-out;
         }
 
-        .chatbot-header {
+        @keyframes slideUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .chat-header {
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             color: white;
-            padding: 15px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
+            padding: 20px;
+            text-align: center;
+            position: relative;
         }
 
-        .chatbot-close {
-            background: none;
-            border: none;
-            color: white;
-            font-size: 20px;
-            cursor: pointer;
+        .chat-status {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: #27ae60;
         }
 
-        .chatbot-body {
-            height: 320px;
+        .chat-status.offline {
+            background: #e74c3c;
+        }
+
+        .chat-body {
+            height: 400px;
             padding: 20px;
             overflow-y: auto;
             background: #f8f9fa;
         }
 
-        .chatbot-input-area {
-            padding: 15px;
+        .chat-input-area {
+            padding: 20px;
             border-top: 1px solid #eee;
             display: flex;
             gap: 10px;
         }
 
-        .chatbot-input {
+        .chat-input {
             flex: 1;
-            padding: 10px;
+            padding: 12px;
             border: 1px solid #ddd;
-            border-radius: 6px;
+            border-radius: 25px;
             outline: none;
+            font-size: 14px;
         }
 
-        .chatbot-send {
+        .chat-send {
             background: #667eea;
             color: white;
             border: none;
-            padding: 10px 15px;
-            border-radius: 6px;
+            padding: 12px 20px;
+            border-radius: 25px;
             cursor: pointer;
+            font-weight: bold;
         }
 
-        .chatbot-send:disabled {
+        .chat-send:disabled {
             background: #ccc;
             cursor: not-allowed;
         }
 
-        .chat-message {
+        .message {
             margin-bottom: 15px;
-            padding: 10px 15px;
+            padding: 12px 16px;
             border-radius: 18px;
             max-width: 80%;
             word-wrap: break-word;
+            animation: messageIn 0.3s ease-out;
         }
 
-        .chat-message.user {
-            background: #667eea;
+        @keyframes messageIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .message.user {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             color: white;
             margin-left: auto;
             text-align: right;
         }
 
-        .chat-message.bot {
+        .message.bot {
             background: white;
             color: #333;
             margin-right: auto;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
         }
 
         .typing-indicator {
@@ -335,61 +458,84 @@ def index():
             color: #666;
             margin-right: auto;
             font-style: italic;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
         }
 
+        /* Quick Actions */
         .quick-actions {
-            padding: 15px;
+            padding: 15px 20px;
             border-bottom: 1px solid #eee;
+            text-align: center;
         }
 
-        .quick-action-btn {
+        .quick-action {
             background: #f8f9fa;
             border: 1px solid #ddd;
-            padding: 8px 12px;
+            padding: 8px 15px;
             margin: 5px;
             border-radius: 20px;
             cursor: pointer;
-            font-size: 0.9rem;
-            transition: background 0.3s ease;
+            font-size: 12px;
+            transition: all 0.3s ease;
+            display: inline-block;
         }
 
-        .quick-action-btn:hover {
-            background: #e9ecef;
+        .quick-action:hover {
+            background: #667eea;
+            color: white;
+            border-color: #667eea;
         }
 
-        .status-indicator {
-            position: absolute;
-            top: 5px;
-            right: 5px;
-            width: 12px;
-            height: 12px;
-            border-radius: 50%;
-            background: #27ae60;
+        /* Animations */
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
         }
 
-        .status-indicator.offline {
-            background: #e74c3c;
-        }
-
-        @keyframes pulse {
-            0% { box-shadow: 0 4px 12px rgba(0,0,0,0.2); }
-            50% { box-shadow: 0 4px 20px rgba(102, 126, 234, 0.4); }
-            100% { box-shadow: 0 4px 12px rgba(0,0,0,0.2); }
-        }
-
+        /* Responsive Design */
         @media (max-width: 768px) {
-            .chatbot-window {
+            .chat-window {
                 width: calc(100vw - 40px);
+                height: 70vh;
                 right: 20px;
                 left: 20px;
             }
+
+            .hero h1 {
+                font-size: 2.5rem;
+            }
+
+            .nav-menu {
+                display: none;
+            }
+
+            .about-content {
+                grid-template-columns: 1fr;
+                text-align: center;
+            }
+
+            .about-image {
+                font-size: 6rem;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .hero {
+                padding: 6rem 0 3rem;
+            }
+
             .hero h1 {
                 font-size: 2rem;
             }
-            .header-content {
-                flex-direction: column;
-                gap: 1rem;
+
+            .hero p {
+                font-size: 1.1rem;
             }
         }
     </style>
@@ -399,85 +545,108 @@ def index():
     <header>
         <div class="container">
             <div class="header-content">
-                <div class="logo">ShopEasy</div>
-                <div class="cart-info">
-                    <span id="cartCount">Cart (0)</span>
-                    <button class="cart-btn" onclick="openCart()">View Cart</button>
-                </div>
+                <div class="logo">🤖 Mshauri Tech</div>
+                <nav>
+                    <ul class="nav-menu">
+                        <li><a href="#home">Home</a></li>
+                        <li><a href="#services">Services</a></li>
+                        <li><a href="#about">About</a></li>
+                        <li><a href="#contact">Contact</a></li>
+                    </ul>
+                </nav>
             </div>
         </div>
     </header>
 
     <!-- Hero Section -->
-    <section class="hero">
+    <section id="home" class="hero">
         <div class="container">
-            <h1>Welcome to ShopEasy</h1>
-            <p>Discover amazing products at unbeatable prices with AI-powered customer support</p>
+            <div class="hero-content">
+                <h1>AI-Powered Customer Support</h1>
+                <p>Experience the future of customer service with our intelligent AI assistant that understands, learns, and helps 24/7</p>
+                <a href="#" class="cta-button" onclick="openChat()">Try AI Assistant</a>
+            </div>
         </div>
     </section>
 
-    <!-- Products Section -->
-    <section class="products">
+    <!-- Services Section -->
+    <section id="services" class="services">
         <div class="container">
-            <h2 class="section-title">Featured Products</h2>
-            <div class="product-grid">
-                <div class="product-card">
-                    <div class="product-image">📱</div>
-                    <div class="product-info">
-                        <h3 class="product-title">Smartphone Pro</h3>
-                        <p class="product-description">Latest flagship smartphone with advanced features</p>
-                        <div class="product-price">$899.99</div>
-                        <button class="add-to-cart" onclick="askChatbotAbout('Smartphone Pro')">Ask About Product</button>
-                    </div>
+            <h2 class="section-title">Our AI Solutions</h2>
+            <div class="services-grid">
+                <div class="service-card">
+                    <span class="service-icon">🤖</span>
+                    <h3>Smart Chatbots</h3>
+                    <p>Intelligent conversational AI that understands context and provides personalized responses to customer inquiries.</p>
                 </div>
-
-                <div class="product-card">
-                    <div class="product-image">💻</div>
-                    <div class="product-info">
-                        <h3 class="product-title">Laptop Ultra</h3>
-                        <p class="product-description">Powerful laptop for work and entertainment</p>
-                        <div class="product-price">$1,299.99</div>
-                        <button class="add-to-cart" onclick="askChatbotAbout('Laptop Ultra')">Ask About Product</button>
-                    </div>
+                <div class="service-card">
+                    <span class="service-icon">📊</span>
+                    <h3>Analytics & Insights</h3>
+                    <p>Advanced analytics to understand customer behavior, preferences, and satisfaction metrics in real-time.</p>
                 </div>
-
-                <div class="product-card">
-                    <div class="product-image">🎧</div>
-                    <div class="product-info">
-                        <h3 class="product-title">Wireless Headphones</h3>
-                        <p class="product-description">Premium noise-canceling headphones</p>
-                        <div class="product-price">$299.99</div>
-                        <button class="add-to-cart" onclick="askChatbotAbout('Wireless Headphones')">Ask About Product</button>
-                    </div>
+                <div class="service-card">
+                    <span class="service-icon">🔧</span>
+                    <h3>Custom Integration</h3>
+                    <p>Seamless integration with your existing systems, CRM, and business processes for maximum efficiency.</p>
                 </div>
-
-                <div class="product-card">
-                    <div class="product-image">⌚</div>
-                    <div class="product-info">
-                        <h3 class="product-title">Smart Watch</h3>
-                        <p class="product-description">Track your fitness and stay connected</p>
-                        <div class="product-price">$399.99</div>
-                        <button class="add-to-cart" onclick="askChatbotAbout('Smart Watch')">Ask About Product</button>
-                    </div>
+                <div class="service-card">
+                    <span class="service-icon">🌐</span>
+                    <h3>Multi-Platform Support</h3>
+                    <p>Deploy across web, mobile, social media, and messaging platforms for consistent customer experience.</p>
                 </div>
-
-                <div class="product-card">
-                    <div class="product-image">📷</div>
-                    <div class="product-info">
-                        <h3 class="product-title">Digital Camera</h3>
-                        <p class="product-description">Capture memories in stunning quality</p>
-                        <div class="product-price">$699.99</div>
-                        <button class="add-to-cart" onclick="askChatbotAbout('Digital Camera')">Ask About Product</button>
-                    </div>
+                <div class="service-card">
+                    <span class="service-icon">🎯</span>
+                    <h3>Personalization</h3>
+                    <p>AI-driven personalization that adapts to individual customer preferences and communication styles.</p>
                 </div>
+                <div class="service-card">
+                    <span class="service-icon">⚡</span>
+                    <h3>Real-time Support</h3>
+                    <p>Instant responses and proactive customer engagement with 99.9% uptime guarantee.</p>
+                </div>
+            </div>
+        </div>
+    </section>
 
-                <div class="product-card">
-                    <div class="product-image">🖥️</div>
-                    <div class="product-info">
-                        <h3 class="product-title">Monitor 4K</h3>
-                        <p class="product-description">Ultra HD monitor for crisp visuals</p>
-                        <div class="product-price">$499.99</div>
-                        <button class="add-to-cart" onclick="askChatbotAbout('Monitor 4K')">Ask About Product</button>
+    <!-- About Section -->
+    <section id="about" class="about">
+        <div class="container">
+            <div class="about-content">
+                <div class="about-text">
+                    <h2>About Mshauri Tech</h2>
+                    <p>We are pioneers in AI-powered customer support solutions, helping businesses transform their customer service experience through intelligent automation and human-like interactions.</p>
+                    <p>Our cutting-edge technology combines natural language processing, machine learning, and deep understanding of customer psychology to create support systems that truly understand and help.</p>
+                    <p>With over 500+ successful implementations and 99.5% customer satisfaction rate, we're trusted by businesses worldwide to deliver exceptional customer experiences.</p>
+                </div>
+                <div class="about-image">
+                    🚀
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Contact Section -->
+    <section id="contact" class="contact">
+        <div class="container">
+            <div class="contact-content">
+                <h2>Get In Touch</h2>
+                <p>Ready to revolutionize your customer support? Let's discuss how our AI solutions can transform your business.</p>
+                <div class="contact-info">
+                    <div class="contact-item">
+                        <h3>📧 Email</h3>
+                        <p>hello@mshauritech.com</p>
+                    </div>
+                    <div class="contact-item">
+                        <h3>📱 Phone</h3>
+                        <p>+1 (555) 123-4567</p>
+                    </div>
+                    <div class="contact-item">
+                        <h3>💬 Live Chat</h3>
+                        <p>Available 24/7 via AI Assistant</p>
+                    </div>
+                    <div class="contact-item">
+                        <h3>🌍 Global</h3>
+                        <p>Serving clients worldwide</p>
                     </div>
                 </div>
             </div>
@@ -487,139 +656,106 @@ def index():
     <!-- Footer -->
     <footer>
         <div class="container">
-            <div class="footer-content">
-                <div class="footer-section">
-                    <h3>About ShopEasy</h3>
-                    <p>Your trusted online shopping destination with quality products and excellent AI-powered customer service.</p>
-                </div>
-                <div class="footer-section">
-                    <h3>Customer Service</h3>
-                    <p>Email: support@shopeasy.com<br>
-                    Phone: 1-800-SHOP-NOW<br>
-                    AI Chat: Available 24/7</p>
-                </div>
-                <div class="footer-section">
-                    <h3>Follow Us</h3>
-                    <p>Stay connected on social media for updates and special offers.</p>
-                </div>
-            </div>
-            <div class="footer-bottom">
-                <p>&copy; 2025 ShopEasy. All rights reserved. Powered by Mshauri Tech AI.</p>
-            </div>
+            <p>&copy; 2025 Mshauri Tech. All rights reserved. Powering the future of customer support with AI.</p>
         </div>
     </footer>
 
-    <!-- Chatbot Widget -->
-    <div class="chatbot-widget">
-        <button class="chatbot-button" onclick="toggleChatbot()" id="chatbotBtn">
+    <!-- Chat Widget -->
+    <div class="chat-widget">
+        <button class="chat-button" onclick="toggleChat()" id="chatButton">
             💬
-            <div class="status-indicator" id="botStatus"></div>
         </button>
-        <div class="chatbot-window" id="chatbotWindow">
-            <div class="chatbot-header">
-                <h3>ShopEasy AI Assistant</h3>
-                <button class="chatbot-close" onclick="toggleChatbot()">×</button>
+
+        <div class="chat-window" id="chatWindow">
+            <div class="chat-header">
+                <h3>AI Assistant</h3>
+                <div class="chat-status" id="chatStatus"></div>
+                <p>Powered by Mshauri Tech</p>
             </div>
+
             <div class="quick-actions">
-                <button class="quick-action-btn" onclick="sendQuickMessage('Show me your best deals')">Best Deals</button>
-                <button class="quick-action-btn" onclick="sendQuickMessage('I want to make a purchase')">Buy Now</button>
-                <button class="quick-action-btn" onclick="sendQuickMessage('What are your shipping options?')">Shipping Info</button>
+                <span class="quick-action" onclick="sendQuickMessage('What services do you offer?')">Services</span>
+                <span class="quick-action" onclick="sendQuickMessage('How does your AI work?')">How it works</span>
+                <span class="quick-action" onclick="sendQuickMessage('I need a demo')">Request Demo</span>
+                <span class="quick-action" onclick="sendQuickMessage('Pricing information')">Pricing</span>
             </div>
-            <div class="chatbot-body" id="chatbotBody">
-                <div class="chat-message bot">
-                    👋 Hi! I'm your ShopEasy AI assistant. I can help you with:
-                    <br><br>
-                    • Product information & specifications
-                    <br>• Processing orders & payments
-                    <br>• Shipping & return policies
-                    <br>• Product recommendations
-                    <br>• Technical support
-                    <br><br>
-                    How can I help you today?
+
+            <div class="chat-body" id="chatBody">
+                <div class="message bot">
+                    <strong>AI Assistant:</strong> Hello! 👋 I'm here to help you learn about Mshauri Tech's AI-powered customer support solutions. How can I assist you today?
                 </div>
             </div>
-            <div class="chatbot-input-area">
-                <input type="text" class="chatbot-input" id="chatbotInput" placeholder="Type your message..." onkeypress="handleChatKeyPress(event)" maxlength="500">
-                <button class="chatbot-send" onclick="sendMessage()" id="sendBtn">Send</button>
+
+            <div class="chat-input-area">
+                <input type="text" class="chat-input" id="chatInput" placeholder="Type your message..." maxlength="500" onkeypress="handleKeyPress(event)">
+                <button class="chat-send" onclick="sendMessage()" id="sendButton">Send</button>
             </div>
         </div>
     </div>
 
     <script>
-        // Global variables
-        let chatbotOpen = false;
+        let chatOpen = false;
         let isTyping = false;
-        let conversationId = 'shop_' + Date.now();
+        let conversationId = 'web_' + Date.now();
 
-        // Initialize chatbot
+        // Initialize
         document.addEventListener('DOMContentLoaded', function() {
             checkBotHealth();
 
-            // Auto-open chatbot with welcome message after 3 seconds
-            setTimeout(() => {
-                if (!chatbotOpen) {
-                    const btn = document.getElementById('chatbotBtn');
-                    btn.style.animation = 'pulse 1s infinite';
-                }
-            }, 3000);
+            // Smooth scrolling for navigation links
+            document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+                anchor.addEventListener('click', function (e) {
+                    e.preventDefault();
+                    const target = document.querySelector(this.getAttribute('href'));
+                    if (target) {
+                        target.scrollIntoView({
+                            behavior: 'smooth',
+                            block: 'start'
+                        });
+                    }
+                });
+            });
         });
 
-        // Check bot health status
-        async function checkBotHealth() {
-            try {
-                const response = await fetch('/health');
-                const data = await response.json();
-                updateBotStatus(data.healthy);
-            } catch (error) {
-                console.error('Health check failed:', error);
-                updateBotStatus(false);
+        // Chat functionality
+        function toggleChat() {
+            const chatWindow = document.getElementById('chatWindow');
+            const chatButton = document.getElementById('chatButton');
+
+            if (chatOpen) {
+                chatWindow.style.display = 'none';
+                chatButton.classList.remove('active');
+                chatOpen = false;
+            } else {
+                chatWindow.style.display = 'block';
+                chatButton.classList.add('active');
+                chatOpen = true;
+                setTimeout(() => {
+                    document.getElementById('chatInput').focus();
+                }, 300);
             }
         }
 
-        function updateBotStatus(isOnline) {
-            const statusIndicator = document.getElementById('botStatus');
-            if (isOnline) {
-                statusIndicator.className = 'status-indicator';
-            } else {
-                statusIndicator.className = 'status-indicator offline';
-            }
-        }
-
-        function toggleChatbot() {
-            const window = document.getElementById('chatbotWindow');
-            const btn = document.getElementById('chatbotBtn');
-
-            if (chatbotOpen) {
-                window.style.display = 'none';
-                btn.textContent = '💬';
-                btn.innerHTML = '💬<div class="status-indicator" id="botStatus"></div>';
-                chatbotOpen = false;
-                checkBotHealth(); // Re-add status indicator
-            } else {
-                window.style.display = 'block';
-                btn.textContent = '×';
-                chatbotOpen = true;
-                document.getElementById('chatbotInput').focus();
+        function openChat() {
+            if (!chatOpen) {
+                toggleChat();
             }
         }
 
         async function sendMessage() {
-            const input = document.getElementById('chatbotInput');
-            const sendBtn = document.getElementById('sendBtn');
+            const input = document.getElementById('chatInput');
+            const sendButton = document.getElementById('sendButton');
             const message = input.value.trim();
 
             if (!message || isTyping) return;
 
-            // Disable input while processing
             isTyping = true;
-            sendBtn.disabled = true;
-            sendBtn.textContent = 'Sending...';
+            sendButton.disabled = true;
+            sendButton.textContent = 'Sending...';
 
-            // Add user message to chat
-            addChatMessage(message, 'user');
+            addMessage('user', message);
             input.value = '';
 
-            // Add typing indicator
             const typingId = addTypingIndicator();
 
             try {
@@ -632,94 +768,65 @@ def index():
                     })
                 });
 
-                if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
-                }
+                if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
 
                 const data = await response.json();
-
-                // Remove typing indicator
                 removeTypingIndicator(typingId);
 
                 if (data.success) {
-                    addChatMessage(data.response, 'bot');
-                    updateBotStatus(true);
+                    addMessage('bot', data.response);
+                    updateChatStatus(true);
                 } else {
-                    addChatMessage(data.error || 'Sorry, I encountered an error. Please try again.', 'bot');
+                    addMessage('bot', data.error || 'Sorry, I encountered an error. Please try again.');
                 }
 
             } catch (error) {
                 console.error('Chat error:', error);
                 removeTypingIndicator(typingId);
-                addChatMessage('Sorry, I could not connect to the support system. Please try again later.', 'bot');
-                updateBotStatus(false);
+                addMessage('bot', 'Sorry, I could not connect to the support system. Please try again later.');
+                updateChatStatus(false);
             }
 
-            // Re-enable input
             isTyping = false;
-            sendBtn.disabled = false;
-            sendBtn.textContent = 'Send';
+            sendButton.disabled = false;
+            sendButton.textContent = 'Send';
             input.focus();
         }
 
         function sendQuickMessage(message) {
-            if (!chatbotOpen) {
-                toggleChatbot();
-            }
-
-            setTimeout(() => {
-                const input = document.getElementById('chatbotInput');
-                input.value = message;
-                sendMessage();
-            }, 300);
+            document.getElementById('chatInput').value = message;
+            sendMessage();
         }
 
-        function askChatbotAbout(product) {
-            if (!chatbotOpen) {
-                toggleChatbot();
-            }
-
-            setTimeout(() => {
-                const input = document.getElementById('chatbotInput');
-                input.value = `Tell me about the ${product}`;
-                sendMessage();
-            }, 300);
-        }
-
-        function addChatMessage(message, sender) {
-            const chatBody = document.getElementById('chatbotBody');
+        function addMessage(sender, text) {
+            const chatBody = document.getElementById('chatBody');
             const messageDiv = document.createElement('div');
-            messageDiv.className = `chat-message ${sender}`;
+            messageDiv.className = `message ${sender}`;
 
-            // Convert line breaks to HTML
-            const formattedMessage = message.replace(/\n/g, '<br>');
-            messageDiv.innerHTML = formattedMessage;
+            const label = sender === 'user' ? 'You' : 'AI Assistant';
+            messageDiv.innerHTML = `<strong>${label}:</strong> ${escapeHtml(text)}`;
 
             chatBody.appendChild(messageDiv);
             chatBody.scrollTop = chatBody.scrollHeight;
         }
 
         function addTypingIndicator() {
-            const chatBody = document.getElementById('chatbotBody');
+            const chatBody = document.getElementById('chatBody');
             const typingDiv = document.createElement('div');
-            typingDiv.className = 'chat-message typing-indicator';
+            typingDiv.className = 'message typing-indicator';
             typingDiv.id = 'typing-' + Date.now();
-            typingDiv.innerHTML = '<span id="typing-dots">AI is thinking</span>';
+            typingDiv.innerHTML = '<strong>AI Assistant:</strong> <span id="typing-dots">thinking</span>';
 
             chatBody.appendChild(typingDiv);
             chatBody.scrollTop = chatBody.scrollHeight;
 
-            // Animate typing dots
             animateTypingDots(typingDiv.id);
-
             return typingDiv.id;
         }
 
         function removeTypingIndicator(typingId) {
             const typingDiv = document.getElementById(typingId);
-            if (typingDiv) {
-                typingDiv.remove();
-            }
+            if (typingDiv) typingDiv.remove();
         }
 
         function animateTypingDots(typingId) {
@@ -735,33 +842,66 @@ def index():
                     clearInterval(interval);
                     return;
                 }
-
                 dots = dots.length >= 3 ? '' : dots + '.';
-                dotsSpan.textContent = 'AI is thinking' + dots;
+                dotsSpan.textContent = 'thinking' + dots;
             }, 500);
         }
 
-        function handleChatKeyPress(event) {
+        async function checkBotHealth() {
+            try {
+                const response = await fetch('/health');
+                const data = await response.json();
+                updateChatStatus(data.healthy);
+            } catch (error) {
+                updateChatStatus(false);
+            }
+        }
+
+        function updateChatStatus(isOnline) {
+            const statusDiv = document.getElementById('chatStatus');
+            statusDiv.className = isOnline ? 'chat-status' : 'chat-status offline';
+        }
+
+        function handleKeyPress(event) {
             if (event.key === 'Enter' && !event.shiftKey) {
                 event.preventDefault();
                 sendMessage();
             }
         }
 
-        // Cart functionality (integrated with chatbot)
-        function addToCart(name, price) {
-            askChatbotAbout(name);
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
         }
 
-        function openCart() {
-            if (!chatbotOpen) {
-                toggleChatbot();
-            }
-            sendQuickMessage("I want to see my cart and checkout");
-        }
+        // Check bot health periodically
+        setInterval(checkBotHealth, 30000);
 
-        // Health monitoring
-        setInterval(checkBotHealth, 30000); // Check every 30 seconds
+        // Smooth scroll reveal animations
+        const observerOptions = {
+            threshold: 0.1,
+            rootMargin: '0px 0px -50px 0px'
+        };
+
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    entry.target.style.opacity = '1';
+                    entry.target.style.transform = 'translateY(0)';
+                }
+            });
+        }, observerOptions);
+
+        // Observe service cards for animations
+        document.addEventListener('DOMContentLoaded', () => {
+            document.querySelectorAll('.service-card').forEach(card => {
+                card.style.opacity = '0';
+                card.style.transform = 'translateY(20px)';
+                card.style.transition = 'opacity 0.6s ease, transform 0.6s ease';
+                observer.observe(card);
+            });
+        });
     </script>
 </body>
 </html>'''
@@ -823,9 +963,9 @@ def health():
             return jsonify({
                 'healthy': False,
                 'message': 'AI assistant not initialized'
-            })
+            }), 503
 
-        # Quick health check
+            # Quick health check
         is_healthy, message = bot.health_check()
         return jsonify({
             'healthy': is_healthy,
@@ -837,12 +977,11 @@ def health():
         return jsonify({
             'healthy': False,
             'message': 'Health check failed'
-        })
+        }), 500
 
-
-@app.route('/clear/<conversation_id>', methods=['POST'])
-def clear_conversation(conversation_id):
-    """Clear conversation history for a specific user"""
+    @app.route('/clear/<conversation_id>', methods=['POST'])
+    def clear_conversation(conversation_id):
+        """Clear conversation history"""
     try:
         if not bot:
             return jsonify({
@@ -851,7 +990,7 @@ def clear_conversation(conversation_id):
             }), 503
 
         bot.clear_conversation(conversation_id)
-        logger.info(f"Cleared conversation: {conversation_id}")
+        logger.info(f"Conversation cleared: {conversation_id}")
 
         return jsonify({
             'success': True,
@@ -859,122 +998,89 @@ def clear_conversation(conversation_id):
         })
 
     except Exception as e:
-        logger.error(f"Error clearing conversation: {str(e)}")
+        logger.error(f"Error clearing conversation {conversation_id}: {str(e)}")
         return jsonify({
             'success': False,
             'error': 'Failed to clear conversation'
         }), 500
 
-
-@app.route('/api/products', methods=['GET'])
-def get_products():
-    """API endpoint to get product information"""
-    try:
-        products = [
-            {
-                'id': 1,
-                'name': 'Smartphone Pro',
-                'price': 899.99,
-                'description': 'Latest flagship smartphone with advanced features',
-                'specs': 'A16 processor, 128GB storage, Triple camera system, 5G connectivity'
-            },
-            {
-                'id': 2,
-                'name': 'Laptop Ultra',
-                'price': 1299.99,
-                'description': 'Powerful laptop for work and entertainment',
-                'specs': 'Intel i7 processor, 16GB RAM, 512GB SSD, 15.6" 4K display'
-            },
-            {
-                'id': 3,
-                'name': 'Wireless Headphones',
-                'price': 299.99,
-                'description': 'Premium noise-canceling headphones',
-                'specs': 'Active noise cancellation, 30-hour battery, Bluetooth 5.0'
-            },
-            {
-                'id': 4,
-                'name': 'Smart Watch',
-                'price': 399.99,
-                'description': 'Track your fitness and stay connected',
-                'specs': 'Heart rate monitor, GPS, Water resistant, 7-day battery'
-            },
-            {
-                'id': 5,
-                'name': 'Digital Camera',
-                'price': 699.99,
-                'description': 'Capture memories in stunning quality',
-                'specs': '24MP sensor, 4K video, Optical image stabilization'
-            },
-            {
-                'id': 6,
-                'name': 'Monitor 4K',
-                'price': 499.99,
-                'description': 'Ultra HD monitor for crisp visuals',
-                'specs': '27" 4K display, HDR support, USB-C connectivity'
-            }
-        ]
-
-        return jsonify({
-            'success': True,
-            'products': products
-        })
-
-    except Exception as e:
-        logger.error(f"Error getting products: {str(e)}")
-        return jsonify({
-            'success': False,
-            'error': 'Failed to retrieve products'
-        }), 500
-
-
 @app.route('/api/status', methods=['GET'])
-def system_status():
-    """Get overall system status"""
+def api_status():
+    """API status endpoint"""
     try:
-        bot_healthy = False
-        bot_message = "Bot not initialized"
-
-        if bot:
-            bot_healthy, bot_message = bot.health_check()
-
         return jsonify({
-            'system': 'online',
-            'bot': {
-                'healthy': bot_healthy,
-                'message': bot_message
-            },
-            'timestamp': time.strftime('%Y-%m-%d %H:%M:%S', time.localtime())
+            'status': 'online',
+            'service': 'Mshauri Tech AI Assistant',
+            'version': '1.0.0',
+            'timestamp': time.time(),
+            'bot_available': bot is not None
         })
-
     except Exception as e:
-        logger.error(f"System status error: {str(e)}")
+        logger.error(f"Status check error: {str(e)}")
         return jsonify({
-            'system': 'error',
-            'error': str(e),
-            'timestamp': time.strftime('%Y-%m-%d %H:%M:%S', time.localtime())
+            'status': 'error',
+            'message': str(e)
         }), 500
+
+@app.errorhandler(404)
+def not_found(error):
+    """Handle 404 errors"""
+    return jsonify({
+        'error': 'Endpoint not found',
+        'status': 404
+    }), 404
+
+@app.errorhandler(500)
+def internal_error(error):
+    """Handle 500 errors"""
+    logger.error(f"Internal server error: {str(error)}")
+    return jsonify({
+        'error': 'Internal server error',
+        'status': 500
+    }), 500
+
+@app.errorhandler(503)
+def service_unavailable(error):
+    """Handle 503 errors"""
+    return jsonify({
+        'error': 'Service temporarily unavailable',
+        'status': 503
+    }), 503
+
+    # Add CORS headers for all responses
+@app.after_request
+def after_request(response):
+    """Add security headers and CORS"""
+    response.headers['Access-Control-Allow-Origin'] = '*'
+    response.headers['Access-Control-Allow-Methods'] = 'GET, POST, OPTIONS'
+    response.headers['Access-Control-Allow-Headers'] = 'Content-Type, Authorization'
+    response.headers['X-Content-Type-Options'] = 'nosniff'
+    response.headers['X-Frame-Options'] = 'DENY'
+    response.headers['X-XSS-Protection'] = '1; mode=block'
+    return response
 
 if __name__ == '__main__':
-    print("Starting ShopEasy Web Server...")
-    print("Visit http://localhost:5000 to access the store")
-    print("Press Ctrl+C to stop the server")
+    if bot:
+        print("🚀 Starting Mshauri Tech AI-Powered Website...")
+        print("🌐 Open your browser and go to: http://localhost:8000")
+        print("💬 Integrated AI chat assistant is ready!")
+        print("📊 Health check available at: http://localhost:8000/health")
+        print("⚡ Press Ctrl+C to stop the server")
+        print("-" * 60)
 
-    try:
-        app.run(
-            host='0.0.0.0',
-            port=5000,
-            debug=False,  # Set to False for production
-            threaded=True
-        )
-    except KeyboardInterrupt:
-        print("\nShutting down ShopEasy Web Server...")
-        logger.info("Server shutdown requested by user")
-    except Exception as e:
-        print(f"Failed to start server: {e}")
-        logger.error(f"Server startup error: {str(e)}")
-    finally:
-        if bot:
-            # Clean up bot resources if needed
-            logger.info("Cleaning up bot resources...")
-        print("Server stopped.")
+        try:
+            app.run(
+                host='0.0.0.0',
+                port=8000,
+                debug=False,
+                threaded=True
+            )
+        except KeyboardInterrupt:
+            print("\n👋 Server stopped by user")
+        except Exception as e:
+            logger.error(f"Server error: {str(e)}")
+            print(f"❌ Server error: {str(e)}")
+    else:
+        print("❌ Cannot start server: AI assistant initialization failed")
+        print("🔧 Please check your bot configuration and try again.")
+        print("📋 Check the web_server.log file for detailed error information.")
