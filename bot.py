@@ -5,6 +5,7 @@ import time
 import json
 import threading
 import sys
+from human_fallback import HumanFallbackHandler
 
 # Set up logging to only go to file (completely silent console)
 logging.basicConfig(
@@ -57,6 +58,7 @@ class CustomerSupportBot:
         self.conversations = {}
         self.max_retries = 3
         self.typing_indicator = TypingIndicator()
+        self.fallback_handler = HumanFallbackHandler()
 
     def create_system_message(self):
         return f"""You are a helpful customer support assistant for {config.COMPANY_NAME}.
@@ -75,6 +77,16 @@ Always prioritize being helpful and accurate over being verbose."""
 
     def chat(self, user_message, conversation_id="default", show_typing=True):
         try:
+            # Check if message should go to human first
+            should_transfer, reason = self.fallback_handler.should_transfer_to_human(user_message)
+
+            if should_transfer:
+                    # Flag conversation for human agent
+                self.fallback_handler.flag_conversation(conversation_id, user_message, reason)
+
+                    # Categorize and respond appropriately
+                category = self.fallback_handler.categorize_request(user_message, reason)
+                return self.fallback_handler.get_human_transfer_message(category)
             if conversation_id not in self.conversations:
                 self.conversations[conversation_id] = []
 

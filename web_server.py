@@ -634,11 +634,11 @@ def index():
                 <div class="contact-info">
                     <div class="contact-item">
                         <h3>📧 Email</h3>
-                        <p>hello@mshauritech.com</p>
+                        <p>mutetie510@gmail.com</p>
                     </div>
                     <div class="contact-item">
                         <h3>📱 Phone</h3>
-                        <p>+1 (555) 123-4567</p>
+                        <p>+254703201180</p>
                     </div>
                     <div class="contact-item">
                         <h3>💬 Live Chat</h3>
