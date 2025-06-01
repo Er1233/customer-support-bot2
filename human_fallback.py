@@ -116,9 +116,9 @@ class HumanFallbackHandler:
             'sales': """I'll connect you with our sales team for detailed pricing and demos! 
 
 📞 **Immediate Help:**
-• Call: +1 (555) 123-4567
-• Email: sales@mshauritech.com
-• Book a demo: [Schedule here]
+• Call: +254703201180
+• Email: mutetie510@gmail.com
+• Book a demo: mutetie56@gmail.com
 
 A sales representative will contact you within 1 hour during business hours (9 AM - 6 PM EAT).""",
 
